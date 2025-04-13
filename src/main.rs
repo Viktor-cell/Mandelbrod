@@ -14,8 +14,8 @@ struct Pixel {
     escapes: i32,
 }
 
-const MAX_THREADS: i32 = 16;
-const ACCURACY: i32 = 2;
+const MAX_THREADS: i32 = 64;
+const ACCURACY: i32 = 1;
 const ITERS: i32 = 100;
 
 impl Complex {
@@ -38,11 +38,11 @@ impl Complex {
 }
 
 fn main() {
-    let x_start = -2.0;
-    let x_stop = 1.0;
-    let y_start = -1.5;
-    let y_stop = 1.5;
-    let screen_part = 400.0;
+    let x_start = -3.0;
+    let x_stop = 2.0;
+    let y_start = -2.0;
+    let y_stop = 2.0;
+    let screen_part = 200.0;
 
     let (mut rl_handle, thread) = init()
         .size(
@@ -77,7 +77,8 @@ fn draw_pixel_mandelbrod(p: &[Pixel], draw_handle: &mut RaylibDrawHandle) {
         let alpha: f32 = if p.escapes < 1 {
             0.0
         } else {
-            p.escapes.ilog2() as f32 / ITERS.ilog2() as f32
+            //p.escapes.ilog2() as f32 / ITERS.ilog2() as f32
+            p.escapes as f32 / ITERS as f32
         };
 
         let color_shade = (alpha * 255.0) as u8;
@@ -117,19 +118,24 @@ fn mandelbrod(
     y_stop: f64,
 ) -> Vec<Pixel> {
     let mut threads: Vec<thread::JoinHandle<()>> = Vec::new();
-    let rows_per_thread = scr_h / MAX_THREADS;
+    let rows_per_thread = (scr_h as f32 / MAX_THREADS as f32).ceil() as i32;
 
     let (tx, rx) = mpsc::channel();
 
     for i in 0..=MAX_THREADS {
         let tx_clone = tx.clone();
         threads.push(thread::spawn(move || {
+
             let mut temp_data = vec![];
+
             let start_y = i * rows_per_thread;
             let end_y = (i + 1) * rows_per_thread;
+
             for y in (start_y..end_y).step_by(ACCURACY as usize) {
+
                 for x in (0..scr_w).step_by(ACCURACY as usize) {
-                    let c: Complex = Complex {
+
+                    let c = Complex {
                         real: x_start + x as f64 / scr_w as f64 * (x_stop - x_start),
                         imag: y_start + y as f64 / scr_h as f64 * (y_stop - y_start),
                     };
